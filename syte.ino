@@ -1,9 +1,3 @@
-/*
-  This is the test for the BME280_LITE library with Web Server
-  This library only works with I2C. The device's address is 0x76 or 0x77.
-  Written by Edward Sicoe.
-*/
-
 #include <BME280_LITE.h>
 #include <BH1750.h>
 #include <ESP8266WiFi.h>
@@ -11,17 +5,17 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 
-#define BME_ADDR    0x76 // Primary address (0x77 is the alternate)
-#define SEA_LEVEL_PRES  1017.8 // sea level pressure in hPa to use in the readAltitude function.
+#define BME_ADDR    0x76 
+#define SEA_LEVEL_PRES  1017.8 
 
-const char* ssid = "ser2.4";  // Вводим сюда SSID
-const char* password = "1807270100";  // Вводим пароль
+const char* ssid = "ser2.4";  
+const char* password = "1807270100";
 
 BH1750 lightMeter;
 BME280_LITE bme;
 ESP8266WebServer server(80);
 
-// Структура для хранения данных с датчиков
+
 struct SensorData {
   float temperature;
   float pressure;
@@ -39,7 +33,6 @@ SensorData currentData;
 void setup() {
   Serial.begin(115200);
   
-  // Инициализация датчиков
   bool bmeInit = bme.begin(BME_ADDR, 
                           BME_H_X1,
                           BME_T_X1, 
@@ -78,7 +71,6 @@ void setup() {
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
-  // Настройка маршрутов веб-сервера
   server.on("/", handleRoot);
   server.on("/data", handleData);
   server.on("/update", handleUpdate);
@@ -94,7 +86,7 @@ void loop() {
 }
 
 void updateSensorData() {
-  // Чтение температуры
+  // Температура
   BME_SensorData temperature = bme.readTemperature(BME_ADDR); 
   if (temperature.isValid) {
     currentData.temperature = temperature.data;
@@ -104,7 +96,7 @@ void updateSensorData() {
     Serial.println("TEMP READ FAIL");
   }
   
-  // Чтение давления
+  // Давление
   BME_SensorData pressure = bme.readPressure(BME_ADDR);
   if (pressure.isValid) {
     currentData.pressure = pressure.data;
@@ -114,7 +106,7 @@ void updateSensorData() {
     Serial.println("PRESSURE READ FAIL");
   }
 
-  // Чтение влажности
+  // Влажность
   BME_SensorData humidity = bme.readHumidity(BME_ADDR);
   if (humidity.isValid) {
     currentData.humidity = humidity.data;
@@ -124,7 +116,7 @@ void updateSensorData() {
     Serial.println("HUMIDITY READ FAIL");
   }
   
-  // Чтение высоты
+  // Высота
   BME_SensorData altitude = bme.readAltitude(BME_ADDR, SEA_LEVEL_PRES);
   if (altitude.isValid) {
     currentData.altitude = altitude.data;
@@ -134,10 +126,12 @@ void updateSensorData() {
     Serial.println("ALTITUDE READ FAIL");
   }
   
-  // Чтение освещенности
+  // Уровень освещенности
   currentData.light = lightMeter.readLightLevel();
 }
 
+
+// Сайт
 void handleRoot() {
   String html = R"=====(
 <!DOCTYPE html>
