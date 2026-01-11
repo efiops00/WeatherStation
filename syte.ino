@@ -8,8 +8,10 @@
 #define BME_ADDR    0x76 
 #define SEA_LEVEL_PRES  1017.8 
 
-const char* ssid = "ser2.4";  
-const char* password = "1807270100";
+const char* ssid = "Имя сети";  
+const char* password = "Пароль";
+// Нужна сеть с чистотой 2,4 ГГЦ
+  
 
 BH1750 lightMeter;
 BME280_LITE bme;
