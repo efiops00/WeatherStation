@@ -1,10 +1,3 @@
-/*
- ESP8266 + BME280 + BH1750
- Pressure in mmHg
- Rain from OpenWeatherMap
- Clouds NEVER overlap sensor data
-*/
-
 #include <BME280_LITE.h>
 #include <BH1750.h>
 #include <ESP8266WiFi.h>
