@@ -3,31 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <title>Weather Station</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
 
 <h1>📡 Weather Station</h1>
-
 <div id="data">Загрузка...</div>
 
 <script>
-function load() {
-  fetch('/data')
-    .then(r => r.json())
-    .then(d => {
-      document.getElementById('data').innerHTML = `
-        🌡 Температура: ${d.temperature} °C<br>
-        🧭 Давление: ${d.pressure} мм рт. ст.<br>
-        💧 Влажность: ${d.humidity} %<br>
-        💡 Свет: ${d.light} лк<br>
-        🌧 Осадки: ${d.isRaining ? "Да" : "Нет"}
-      `;
-    });
+async function load() {
+  const r = await fetch("/data");
+  const d = await r.json();
+
+  document.getElementById("data").innerHTML = `
+    🌡 Температура: ${d.temperature} °C<br>
+    🧭 Давление: ${d.pressure} мм рт. ст.<br>
+    💧 Влажность: ${d.humidity} %<br>
+    💡 Свет: ${d.light} лк<br>
+    🌧 Осадки: ${d.isRaining ? "Да" : "Нет"}
+  `;
 }
 
 load();
-setInterval(load, 4000);
+setInterval(load, 3000);
 </script>
 
 </body>
