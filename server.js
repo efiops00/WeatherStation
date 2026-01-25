@@ -2,43 +2,66 @@ const express = require("express");
 const path = require("path");
 
 const app = express();
-app.use(express.json());
+const PORT = process.env.PORT || 8080;
 
-// ⚠️ ГЛОБАЛЬНОЕ ХРАНЕНИЕ
-global.weatherData = {
+// ─────────────────────────────
+// Хранилище последних данных
+// ─────────────────────────────
+let lastData = {
   temperature: 0,
   pressure: 0,
   humidity: 0,
   light: 0,
-  isRaining: false
+  isRaining: false,
+  updatedAt: null,
 };
 
-// ESP → POST
-app.post("/data", (req, res) => {
-  console.log("📡 ESP DATA:", req.body);
+// ─────────────────────────────
+// Middleware
+// ─────────────────────────────
+app.use(express.json());
 
-  global.weatherData = {
-    temperature: Number(req.body.temperature),
-    pressure: Number(req.body.pressure),
-    humidity: Number(req.body.humidity),
-    light: Number(req.body.light),
-    isRaining: Boolean(req.body.isRaining)
-  };
-
-  res.sendStatus(200);
-});
-
-// браузер → GET
-app.get("/data", (req, res) => {
-  res.json(global.weatherData);
-});
-
-// HTML
+// ─────────────────────────────
+// Главная страница
+// ─────────────────────────────
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-const PORT = process.env.PORT || 8080;
+// ─────────────────────────────
+// Получение данных (для сайта)
+// ─────────────────────────────
+app.get("/data", (req, res) => {
+  res.json(lastData);
+});
+
+// ─────────────────────────────
+// Приём данных от ESP (POST)
+// ─────────────────────────────
+app.post("/data", (req, res) => {
+  const body = req.body;
+
+  if (!body || Object.keys(body).length === 0) {
+    return res.status(400).json({ status: "error", message: "Empty body" });
+  }
+
+  lastData = {
+    temperature: Number(body.temperature) || 0,
+    pressure: Number(body.pressure) || 0,
+    humidity: Number(body.humidity) || 0,
+    light: Number(body.light) || 0,
+    isRaining: Boolean(body.isRaining),
+    updatedAt: new Date().toISOString(),
+  };
+
+  console.log("📡 DATA RECEIVED:", lastData);
+
+  res.json({ status: "ok" });
+});
+
+// ─────────────────────────────
+// Запуск сервера
+// ─────────────────────────────
 app.listen(PORT, () => {
-  console.log("🚀 Server running on", PORT);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
