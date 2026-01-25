@@ -27,7 +27,7 @@ BH1750 lightMeter;
 
 /* ========== TIMING ========== */
 unsigned long lastUpdate = 0;
-const unsigned long UPDATE_INTERVAL = 180000; // 3 минуты
+const unsigned long UPDATE_INTERVAL = 10000; // 3 минуты
 
 /* ========== DATA ========== */
 float temperature = 0;
