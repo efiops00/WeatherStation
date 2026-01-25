@@ -1,6 +1,6 @@
 /*
  ESP8266 + BME280 + BH1750
- Отправка данных на Railway (HTTPS)
+ Отправка данных на Railway (HTTPS, POST /data)
 */
 
 #include <ESP8266WiFi.h>
@@ -9,16 +9,16 @@
 #include <BH1750.h>
 
 /* ========== WIFI ========== */
-const char* ssid = "ser2.4";
+const char* ssid     = "ser2.4";
 const char* password = "1807270100";
 
 /* ========== RAILWAY ========== */
 const char* serverHost = "weatherstation-production-17fz.up.railway.app";
 
-/* ========== OPENWEATHER ========== */
-const char* weatherHost = "api.openweathermap.org";
+/* ========== OPENWEATHER (дождь) ========== */
+const char* weatherHost   = "api.openweathermap.org";
 const char* weatherApiKey = "ТВОЙ_API_KEY";
-const char* city = "Moscow";
+const char* city          = "Moscow";
 
 /* ========== SENSORS ========== */
 #define BME_ADDR 0x76
@@ -31,10 +31,10 @@ const unsigned long UPDATE_INTERVAL = 180000; // 3 минуты
 
 /* ========== DATA ========== */
 float temperature = 0;
-float pressure = 0;
-float humidity = 0;
-float light = 0;
-bool isRaining = false;
+float pressure    = 0;
+float humidity    = 0;
+float light       = 0;
+bool  isRaining   = false;
 
 /* ================= SETUP ================= */
 void setup() {
@@ -102,7 +102,7 @@ void checkRain() {
 
   client.print(
     "GET " + url + " HTTP/1.1\r\n"
-    "Host: " + weatherHost + "\r\n"
+    "Host: " + String(weatherHost) + "\r\n"
     "Connection: close\r\n\r\n"
   );
 
@@ -120,7 +120,7 @@ void checkRain() {
 /* ================= SEND TO RAILWAY ================= */
 void sendToRailway() {
   WiFiClientSecure client;
-  client.setInsecure(); // обязательно для ESP8266
+  client.setInsecure(); // важно для ESP8266
 
   Serial.println("Connecting to Railway (HTTPS)...");
   if (!client.connect(serverHost, 443)) {
@@ -130,15 +130,17 @@ void sendToRailway() {
 
   String json = "{";
   json += "\"temperature\":" + String(temperature) + ",";
-  json += "\"pressure\":" + String(pressure) + ",";
-  json += "\"humidity\":" + String(humidity) + ",";
-  json += "\"light\":" + String(light) + ",";
-  json += "\"isRaining\":" + String(isRaining ? "true" : "false");
+  json += "\"pressure\":"    + String(pressure)    + ",";
+  json += "\"humidity\":"    + String(humidity)    + ",";
+  json += "\"light\":"       + String(light)       + ",";
+  json += "\"isRaining\":"   + String(isRaining ? "true" : "false");
   json += "}";
 
   client.print(
     "POST /data HTTP/1.1\r\n"
     "Host: " + String(serverHost) + "\r\n"
+    "User-Agent: ESP8266\r\n"
+    "Accept: */*\r\n"
     "Content-Type: application/json\r\n"
     "Content-Length: " + String(json.length()) + "\r\n"
     "Connection: close\r\n\r\n" +
