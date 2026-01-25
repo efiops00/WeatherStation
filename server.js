@@ -1,55 +1,44 @@
 const express = require("express");
-const fs = require("fs");
 const path = require("path");
 
 const app = express();
 app.use(express.json());
 
-const DATA_FILE = path.join(__dirname, "data.json");
+// ⚠️ ГЛОБАЛЬНОЕ ХРАНЕНИЕ
+global.weatherData = {
+  temperature: 0,
+  pressure: 0,
+  humidity: 0,
+  light: 0,
+  isRaining: false
+};
 
-// если файла нет — создаём
-if (!fs.existsSync(DATA_FILE)) {
-  fs.writeFileSync(
-    DATA_FILE,
-    JSON.stringify({
-      temperature: 0,
-      pressure: 0,
-      humidity: 0,
-      light: 0,
-      isRaining: false
-    }, null, 2)
-  );
-}
-
-// 📥 ESP → POST /data
+// ESP → POST
 app.post("/data", (req, res) => {
-  console.log("📡 Data from ESP:", req.body);
+  console.log("📡 ESP DATA:", req.body);
 
-  const data = {
-    temperature: Number(req.body.temperature) || 0,
-    pressure: Number(req.body.pressure) || 0,
-    humidity: Number(req.body.humidity) || 0,
-    light: Number(req.body.light) || 0,
+  global.weatherData = {
+    temperature: Number(req.body.temperature),
+    pressure: Number(req.body.pressure),
+    humidity: Number(req.body.humidity),
+    light: Number(req.body.light),
     isRaining: Boolean(req.body.isRaining)
   };
 
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-  res.json({ status: "ok" });
+  res.sendStatus(200);
 });
 
-// 📤 браузер → GET /data
+// браузер → GET
 app.get("/data", (req, res) => {
-  const data = JSON.parse(fs.readFileSync(DATA_FILE));
-  res.json(data);
+  res.json(global.weatherData);
 });
 
-// 🌍 главная страница
+// HTML
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// 🚀 запуск (ВАЖНО для Railway)
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log("🚀 Server running on", PORT);
 });
