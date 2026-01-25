@@ -1,54 +1,55 @@
 /*
  ESP8266 + BME280 + BH1750
- Отправка данных на Railway
- Давление в мм рт. ст.
- Осадки из OpenWeatherMap
+ Отправка данных на Railway (HTTPS)
 */
 
 #include <ESP8266WiFi.h>
+#include <WiFiClientSecure.h>
 #include <BME280_LITE.h>
 #include <BH1750.h>
 
-/* ===== WIFI ===== */
+/* ========== WIFI ========== */
 const char* ssid = "ser2.4";
 const char* password = "1807270100";
 
-/* ===== RAILWAY ===== */
-const char* serverHost = "https://weatherstation-production-17f7.up.railway.app"; // ← ЗАМЕНИ
-const int serverPort = 80;
+/* ========== RAILWAY ========== */
+const char* serverHost = "weatherstation-production-17fz.up.railway.app";
 
-/* ===== OPENWEATHER ===== */
+/* ========== OPENWEATHER ========== */
 const char* weatherHost = "api.openweathermap.org";
 const char* weatherApiKey = "ТВОЙ_API_KEY";
 const char* city = "Moscow";
 
-/* ===== SENSORS ===== */
+/* ========== SENSORS ========== */
 #define BME_ADDR 0x76
 BME280_LITE bme;
 BH1750 lightMeter;
 
-/* ===== UPDATE ===== */
+/* ========== TIMING ========== */
 unsigned long lastUpdate = 0;
 const unsigned long UPDATE_INTERVAL = 180000; // 3 минуты
 
-/* ===== DATA ===== */
-struct SensorData {
-  float temperature = 0;
-  float pressure = 0;
-  float humidity = 0;
-  float light = 0;
-  bool tempValid = false;
-  bool pressValid = false;
-  bool humValid = false;
-  bool isRaining = false;
-};
-
-SensorData currentData;
+/* ========== DATA ========== */
+float temperature = 0;
+float pressure = 0;
+float humidity = 0;
+float light = 0;
+bool isRaining = false;
 
 /* ================= SETUP ================= */
 void setup() {
   Serial.begin(115200);
   delay(100);
+
+  /* --- WiFi --- */
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nWiFi connected");
+  Serial.println(WiFi.localIP());
 
   /* --- BME280 --- */
   bme.begin(BME_ADDR, BME_H_X1, BME_T_X1, BME_P_X16,
@@ -58,51 +59,41 @@ void setup() {
   /* --- BH1750 --- */
   lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE_2);
 
-  /* --- WIFI --- */
-  WiFi.begin(ssid, password);
-  Serial.print("Connecting WiFi");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("\nWiFi connected");
-
-  updateSensorData();
+  updateSensors();
   checkRain();
   sendToRailway();
 }
 
 /* ================= LOOP ================= */
 void loop() {
-  if (millis() - lastUpdate >= UPDATE_INTERVAL) {
+  if (millis() - lastUpdate > UPDATE_INTERVAL) {
     lastUpdate = millis();
-    updateSensorData();
+    updateSensors();
     checkRain();
     sendToRailway();
   }
 }
 
 /* ================= SENSORS ================= */
-void updateSensorData() {
+void updateSensors() {
   auto t = bme.readTemperature(BME_ADDR);
-  if ((currentData.tempValid = t.isValid))
-    currentData.temperature = t.data;
+  if (t.isValid) temperature = t.data;
 
   auto p = bme.readPressure(BME_ADDR);
-  if ((currentData.pressValid = p.isValid))
-    currentData.pressure = p.data * 0.750061683; // Pa → mmHg
+  if (p.isValid) pressure = p.data * 0.750061683; // Pa → мм рт. ст.
 
   auto h = bme.readHumidity(BME_ADDR);
-  if ((currentData.humValid = h.isValid))
-    currentData.humidity = h.data;
+  if (h.isValid) humidity = h.data;
 
-  currentData.light = lightMeter.readLightLevel();
+  light = lightMeter.readLightLevel();
+
+  Serial.println("📊 Sensors updated");
 }
 
 /* ================= RAIN ================= */
 void checkRain() {
   WiFiClient client;
-  currentData.isRaining = false;
+  isRaining = false;
 
   if (!client.connect(weatherHost, 80)) return;
 
@@ -120,7 +111,7 @@ void checkRain() {
       String line = client.readStringUntil('\n');
       if (line.indexOf("\"rain\"") >= 0 ||
           line.indexOf("\"snow\"") >= 0) {
-        currentData.isRaining = true;
+        isRaining = true;
       }
     }
   }
@@ -128,22 +119,21 @@ void checkRain() {
 
 /* ================= SEND TO RAILWAY ================= */
 void sendToRailway() {
-  WiFiClient client;
+  WiFiClientSecure client;
+  client.setInsecure(); // обязательно для ESP8266
 
-  if (!client.connect(serverHost, serverPort)) {
-    Serial.println("Railway connection failed");
+  Serial.println("Connecting to Railway (HTTPS)...");
+  if (!client.connect(serverHost, 443)) {
+    Serial.println("❌ HTTPS connection FAILED");
     return;
   }
 
   String json = "{";
-  json += "\"temperature\":" + String(currentData.temperature) + ",";
-  json += "\"pressure\":" + String(currentData.pressure) + ",";
-  json += "\"humidity\":" + String(currentData.humidity) + ",";
-  json += "\"light\":" + String(currentData.light) + ",";
-  json += "\"isRaining\":" + String(currentData.isRaining ? "true" : "false") + ",";
-  json += "\"tempValid\":" + String(currentData.tempValid ? "true" : "false") + ",";
-  json += "\"pressValid\":" + String(currentData.pressValid ? "true" : "false") + ",";
-  json += "\"humValid\":" + String(currentData.humValid ? "true" : "false");
+  json += "\"temperature\":" + String(temperature) + ",";
+  json += "\"pressure\":" + String(pressure) + ",";
+  json += "\"humidity\":" + String(humidity) + ",";
+  json += "\"light\":" + String(light) + ",";
+  json += "\"isRaining\":" + String(isRaining ? "true" : "false");
   json += "}";
 
   client.print(
