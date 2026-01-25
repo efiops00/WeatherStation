@@ -1,28 +1,37 @@
+/*
+ ESP8266 + BME280 + BH1750
+ Отправка данных на Railway
+ Давление в мм рт. ст.
+ Осадки из OpenWeatherMap
+*/
+
+#include <ESP8266WiFi.h>
 #include <BME280_LITE.h>
 #include <BH1750.h>
-#include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
 
-#define BME_ADDR 0x76
+/* ===== WIFI ===== */
+const char* ssid = "ser2.4";
+const char* password = "1807270100";
 
-const char* ssid = "Имя сети";
-const char* password = "Пароль";
-//  Нужна сеть с 2,4 ГГЦ
+/* ===== RAILWAY ===== */
+const char* serverHost = "XXXXX.up.railway.app"; // ← ЗАМЕНИ
+const int serverPort = 80;
 
-/* OpenWeatherMap */
+/* ===== OPENWEATHER ===== */
 const char* weatherHost = "api.openweathermap.org";
 const char* weatherApiKey = "ТВОЙ_API_KEY";
 const char* city = "Moscow";
 
-BH1750 lightMeter;
+/* ===== SENSORS ===== */
+#define BME_ADDR 0x76
 BME280_LITE bme;
-ESP8266WebServer server(80);
+BH1750 lightMeter;
 
-/* ===== обновление ===== */
+/* ===== UPDATE ===== */
 unsigned long lastUpdate = 0;
-const unsigned long UPDATE_INTERVAL = 180000;
+const unsigned long UPDATE_INTERVAL = 180000; // 3 минуты
 
-/* ===== данные ===== */
+/* ===== DATA ===== */
 struct SensorData {
   float temperature = 0;
   float pressure = 0;
@@ -39,32 +48,37 @@ SensorData currentData;
 /* ================= SETUP ================= */
 void setup() {
   Serial.begin(115200);
+  delay(100);
 
+  /* --- BME280 --- */
   bme.begin(BME_ADDR, BME_H_X1, BME_T_X1, BME_P_X16,
             BME_NORMAL, BME_TSB_0_5MS, BME_FILTER_2);
   bme.calibrate(BME_ADDR);
 
+  /* --- BH1750 --- */
   lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE_2);
 
+  /* --- WIFI --- */
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) delay(500);
-
-  server.on("/", handleRoot);
-  server.on("/data", handleData);
-  server.begin();
+  Serial.print("Connecting WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nWiFi connected");
 
   updateSensorData();
   checkRain();
+  sendToRailway();
 }
 
 /* ================= LOOP ================= */
 void loop() {
-  server.handleClient();
-
   if (millis() - lastUpdate >= UPDATE_INTERVAL) {
     lastUpdate = millis();
     updateSensorData();
     checkRain();
+    sendToRailway();
   }
 }
 
@@ -76,7 +90,7 @@ void updateSensorData() {
 
   auto p = bme.readPressure(BME_ADDR);
   if ((currentData.pressValid = p.isValid))
-    currentData.pressure = p.data * 0.750061683;
+    currentData.pressure = p.data * 0.750061683; // Pa → mmHg
 
   auto h = bme.readHumidity(BME_ADDR);
   if ((currentData.humValid = h.isValid))
@@ -112,214 +126,35 @@ void checkRain() {
   }
 }
 
-/* ================= WEB ================= */
-void handleRoot() {
-String html = R"=====(<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ESP8266 Метеостанция</title>
+/* ================= SEND TO RAILWAY ================= */
+void sendToRailway() {
+  WiFiClient client;
 
-<style>
-*{box-sizing:border-box}
-body{
- margin:0;
- background:linear-gradient(180deg,#0b0b14,#151528);
- color:#fff;
- font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto;
- overflow-x:hidden;
-}
-
-/* ===== ЗОНА ТУЧ (НИЖЕ ДАННЫХ) ===== */
-.sky{
- position:absolute;
- top:450px;          /* 🔽 ниже данных */
- left:0;
- width:100%;
- height:200px;
- pointer-events:none;
-}
-
-/* ===== CLOUD ===== */
-.cloud{
- position:absolute;
- width:160px;
- height:60px;
- background:#fff;
- border-radius:50px;
- opacity:.95;
-}
-
-.cloud:before,.cloud:after{
- content:'';
- position:absolute;
- background:#fff;
- width:80px;
- height:80px;
- border-radius:50%;
- top:-35px;
-}
-.cloud:before{left:20px}
-.cloud:after{right:20px}
-
-.rainy .cloud,
-.rainy .cloud:before,
-.rainy .cloud:after{
- background:#9aa0a6;
-}
-
-/* ===== CLOUD MOTION ===== */
-@media (min-width:768px){
- .cloud{animation:floatCloud linear infinite alternate}
- .c1{top:10px;left:5%;animation-duration:22s}
- .c2{top:50px;left:30%;animation-duration:26s}
- .c3{top:90px;left:55%;animation-duration:24s}
- .c4{top:130px;left:15%;animation-duration:30s}
- .c5{top:40px;left:70%;animation-duration:28s}
- .c6{top:110px;left:85%;animation-duration:32s}
-}
-
-@keyframes floatCloud{
- from{transform:translateX(-40px)}
- to{transform:translateX(40px)}
-}
-
-/* ===== RAIN ===== */
-.rain{
- position:absolute;
- top:60px;
- left:0;
- width:100%;
- height:140px;
- display:none;
-}
-.rainy .rain{display:block}
-
-.drop{
- position:absolute;
- width:2px;
- height:14px;
- background:rgba(180,200,255,.85);
- animation:fall linear infinite;
-}
-
-@keyframes fall{
- to{transform:translateY(140px);opacity:0}
-}
-
-/* ===== CONTENT ===== */
-.content{
- margin-top:40px;    /* данные всегда выше */
-}
-
-h1{text-align:center;font-size:22px;margin:16px 0}
-
-.grid{
- display:grid;
- grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
- gap:12px;
- padding:12px
-}
-
-.card{
- background:#1e1e2f;
- border-radius:18px;
- padding:14px;
- text-align:center;
- box-shadow:0 6px 16px rgba(0,0,0,.45)
-}
-
-.icon{font-size:32px}
-.title{font-size:14px;opacity:.7}
-.value{font-size:26px;font-weight:700;margin:6px 0}
-.unit{font-size:13px;opacity:.6}
-</style>
-</head>
-
-<body>
-
-<div class="content">
-<h1>📡 Метеостанция</h1>
-<div id="grid" class="grid"></div>
-</div>
-
-<div class="sky" id="sky">
- <div class="cloud c1"></div>
- <div class="cloud c2"></div>
- <div class="cloud c3"></div>
- <div class="cloud c4"></div>
- <div class="cloud c5"></div>
- <div class="cloud c6"></div>
- <div class="rain" id="rain"></div>
-</div>
-
-<script>
-const grid=document.getElementById('grid');
-const sky=document.getElementById('sky');
-const rain=document.getElementById('rain');
-
-function card(i,t,v,u){
- return `<div class="card">
- <div class="icon">${i}</div>
- <div class="title">${t}</div>
- <div class="value">${v}</div>
- <div class="unit">${u}</div>
- </div>`;
-}
-
-function makeRain(){
- rain.innerHTML='';
- for(let i=0;i<60;i++){
-  let d=document.createElement('div');
-  d.className='drop';
-  d.style.left=Math.random()*100+'%';
-  d.style.animationDuration=(0.5+Math.random())+'s';
-  d.style.animationDelay=Math.random()+'s';
-  rain.appendChild(d);
- }
-}
-
-function load(){
- fetch('/data').then(r=>r.json()).then(d=>{
-  let h='';
-  if(d.tempValid) h+=card("🌡️","Температура",d.temperature.toFixed(1),"°C");
-  if(d.pressValid) h+=card("🧭","Давление",d.pressure.toFixed(1),"мм рт. ст.");
-  if(d.humValid) h+=card("💧","Влажность",d.humidity.toFixed(1),"%");
-  h+=card(d.isRaining?"🌧️":"☀️","Осадки",d.isRaining?"Да":"Нет","");
-  h+=card("💡","Освещённость",d.light.toFixed(0),"лк");
-  grid.innerHTML=h;
-
-  if(d.isRaining){
-    sky.classList.add('rainy');
-    makeRain();
-  } else {
-    sky.classList.remove('rainy');
+  if (!client.connect(serverHost, serverPort)) {
+    Serial.println("Railway connection failed");
+    return;
   }
- });
-}
 
-load();
-setInterval(load,4000);
-</script>
+  String json = "{";
+  json += "\"temperature\":" + String(currentData.temperature) + ",";
+  json += "\"pressure\":" + String(currentData.pressure) + ",";
+  json += "\"humidity\":" + String(currentData.humidity) + ",";
+  json += "\"light\":" + String(currentData.light) + ",";
+  json += "\"isRaining\":" + String(currentData.isRaining ? "true" : "false") + ",";
+  json += "\"tempValid\":" + String(currentData.tempValid ? "true" : "false") + ",";
+  json += "\"pressValid\":" + String(currentData.pressValid ? "true" : "false") + ",";
+  json += "\"humValid\":" + String(currentData.humValid ? "true" : "false");
+  json += "}";
 
-</body>
-</html>)=====";
+  client.print(
+    "POST /data HTTP/1.1\r\n"
+    "Host: " + String(serverHost) + "\r\n"
+    "Content-Type: application/json\r\n"
+    "Content-Length: " + String(json.length()) + "\r\n"
+    "Connection: close\r\n\r\n" +
+    json
+  );
 
-server.send(200,"text/html",html);
-}
-
-/* ================= JSON ================= */
-void handleData() {
- String j="{";
- j+="\"temperature\":"+String(currentData.temperature)+",";
- j+="\"pressure\":"+String(currentData.pressure)+",";
- j+="\"humidity\":"+String(currentData.humidity)+",";
- j+="\"light\":"+String(currentData.light)+",";
- j+="\"isRaining\":"+String(currentData.isRaining?"true":"false")+",";
- j+="\"tempValid\":"+String(currentData.tempValid?"true":"false")+",";
- j+="\"pressValid\":"+String(currentData.pressValid?"true":"false")+",";
- j+="\"humValid\":"+String(currentData.humValid?"true":"false");
- j+="}";
- server.send(200,"application/json",j);
+  Serial.println("📡 Sent to Railway:");
+  Serial.println(json);
 }
