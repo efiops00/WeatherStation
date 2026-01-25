@@ -21,6 +21,7 @@ app.get("/health", (req, res) => {
 
 /* ================== ESP -> POST /data ================== */
 app.post("/data", (req, res) => {
+  console.log("🔥 POST /data HIT");
   console.log("📡 Data from ESP:", req.body);
 
   sensorData = {
@@ -51,3 +52,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("🚀 Server running on port", PORT);
 });
+
