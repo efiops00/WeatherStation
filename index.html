@@ -2,30 +2,66 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Weather Station</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📡 Weather Station</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; background: #f0f8ff; }
+    h1 { text-align: center; color: #333; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background: #4CAF50; color: white; }
+    .rain { color: red; font-weight: bold; }
+    .updated { text-align: center; font-size: 0.9em; color: #666; }
+    .loading { text-align: center; color: #999; }
+  </style>
 </head>
 <body>
+  <h1>📡 Погодная станция</h1>
+  <div id="loading" class="loading">Загрузка...</div>
+  <table id="dataTable" style="display: none;">
+    <thead>
+      <tr>
+        <th>Параметр</th>
+        <th>Значение</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>🌡️ Температура</td><td id="temperature">-- °C</td></tr>
+      <tr><td>📉 Давление</td><td id="pressure">-- мм рт. ст.</td></tr>
+      <tr><td>💧 Влажность</td><td id="humidity">-- %</td></tr>
+      <tr><td>☀️ Свет</td><td id="light">-- lx</td></tr>
+      <tr><td>🌧️ Дождь</td><td id="isRaining">--</td></tr>
+    </tbody>
+  </table>
+  <div id="updated" class="updated"></div>
 
-<h1>📡 Weather Station</h1>
-<div id="data">Загрузка...</div>
+  <script>
+    async function updateData() {
+      try {
+        const response = await fetch('/data', {
+          cache: 'no-store',  // Нет кэша
+          headers: { 'Cache-Control': 'no-cache' }
+        });
+        const data = await response.json();
+        
+        document.getElementById('temperature').textContent = data.temperature.toFixed(1);
+        document.getElementById('pressure').textContent = data.pressure.toFixed(1);
+        document.getElementById('humidity').textContent = data.humidity.toFixed(1);
+        document.getElementById('light').textContent = data.light.toFixed(1);
+        document.getElementById('isRaining').innerHTML = data.isRaining ? '<span class="rain">Да</span>' : 'Нет';
+        document.getElementById('updated').textContent = 'Обновлено: ' + new Date(data.updatedAt).toLocaleString('ru');
+        
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('dataTable').style.display = 'table';
+      } catch (error) {
+        console.error('Ошибка:', error);
+        document.getElementById('loading').textContent = 'Ошибка загрузки данных';
+      }
+    }
 
-<script>
-async function load() {
-  const r = await fetch("/data");
-  const d = await r.json();
-
-  document.getElementById("data").innerHTML = `
-    🌡 Температура: ${d.temperature} °C<br>
-    🧭 Давление: ${d.pressure} мм рт. ст.<br>
-    💧 Влажность: ${d.humidity} %<br>
-    💡 Свет: ${d.light} лк<br>
-    🌧 Осадки: ${d.isRaining ? "Да" : "Нет"}
-  `;
-}
-
-load();
-setInterval(load, 3000);
-</script>
-
+    // Загрузка при старте и каждые 5 сек
+    updateData();
+    setInterval(updateData, 5000);
+  </script>
 </body>
 </html>
