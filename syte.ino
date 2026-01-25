@@ -14,7 +14,7 @@ const char* ssid = "ser2.4";
 const char* password = "1807270100";
 
 /* ===== RAILWAY ===== */
-const char* serverHost = "XXXXX.up.railway.app"; // ← ЗАМЕНИ
+const char* serverHost = "https://weatherstation-production-17f7.up.railway.app"; // ← ЗАМЕНИ
 const int serverPort = 80;
 
 /* ===== OPENWEATHER ===== */
