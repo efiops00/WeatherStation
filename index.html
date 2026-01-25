@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ESP8266 Метеостанция</title>
+
+<style>
+/* твой CSS без изменений */
+</style>
+</head>
+
+<body>
+
+<div class="content">
+<h1>📡 Метеостанция</h1>
+<div id="grid" class="grid"></div>
+</div>
+
+<script>
+function load(){
+ fetch('/data')
+ .then(r=>r.json())
+ .then(d=>{
+   document.getElementById('grid').innerHTML = `
+     <div>${d.temperature} °C</div>
+     <div>${d.pressure} мм</div>
+     <div>${d.humidity} %</div>
+     <div>${d.isRaining ? "🌧️ Дождь" : "☀️ Без осадков"}</div>
+   `;
+ });
+}
+load();
+setInterval(load,4000);
+</script>
+
+</body>
+</html>
