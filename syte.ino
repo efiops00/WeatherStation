@@ -1,6 +1,6 @@
 /*
- ESP8266 + BME280 + BH1750
- Отправка данных на Railway (HTTPS, POST /data)
+ESP8266 + BME280 + BH1750
+Отправка данных на Railway (HTTPS, POST /data)
 */
 
 #include <ESP8266WiFi.h>
@@ -9,16 +9,16 @@
 #include <BH1750.h>
 
 /* ========== WIFI ========== */
-const char* ssid     = "ser2.4";
+const char* ssid = "ser2.4";
 const char* password = "1807270100";
 
 /* ========== RAILWAY ========== */
 const char* serverHost = "weatherstation-production-17fz.up.railway.app";
 
 /* ========== OPENWEATHER (дождь) ========== */
-const char* weatherHost   = "api.openweathermap.org";
-const char* weatherApiKey = "ТВОЙ_API_KEY";
-const char* city          = "Moscow";
+const char* weatherHost = "api.openweathermap.org";
+const char* weatherApiKey = "ВАШ_РЕАЛЬНЫЙ_API_KEY_ЗДЕСЬ";  // Получите на openweathermap.org
+const char* city = "Moscow";
 
 /* ========== SENSORS ========== */
 #define BME_ADDR 0x76
@@ -31,10 +31,10 @@ const unsigned long UPDATE_INTERVAL = 180000; // 3 минуты
 
 /* ========== DATA ========== */
 float temperature = 0;
-float pressure    = 0;
-float humidity    = 0;
-float light       = 0;
-bool  isRaining   = false;
+float pressure = 0;
+float humidity = 0;
+float light = 0;
+bool isRaining = false;
 
 /* ================= SETUP ================= */
 void setup() {
@@ -48,6 +48,7 @@ void setup() {
     delay(500);
     Serial.print(".");
   }
+
   Serial.println("\nWiFi connected");
   Serial.println(WiFi.localIP());
 
@@ -61,7 +62,7 @@ void setup() {
 
   updateSensors();
   checkRain();
-  sendToRailway();
+  sendToRailway();  // Тестовая отправка при старте
 }
 
 /* ================= LOOP ================= */
@@ -71,35 +72,38 @@ void loop() {
     updateSensors();
     checkRain();
     sendToRailway();
+    Serial.println("--- Цикл обновления завершен ---");
   }
+  delay(1000);  // Небольшая пауза
 }
 
 /* ================= SENSORS ================= */
 void updateSensors() {
   auto t = bme.readTemperature(BME_ADDR);
   if (t.isValid) temperature = t.data;
-
   auto p = bme.readPressure(BME_ADDR);
   if (p.isValid) pressure = p.data * 0.750061683; // Pa → мм рт. ст.
-
   auto h = bme.readHumidity(BME_ADDR);
   if (h.isValid) humidity = h.data;
-
   light = lightMeter.readLightLevel();
 
-  Serial.println("📊 Sensors updated");
+  Serial.print("📊 Данные: T="); Serial.print(temperature);
+  Serial.print(" P="); Serial.print(pressure);
+  Serial.print(" H="); Serial.print(humidity);
+  Serial.print(" L="); Serial.println(light);
 }
 
 /* ================= RAIN ================= */
 void checkRain() {
   WiFiClient client;
   isRaining = false;
-
-  if (!client.connect(weatherHost, 80)) return;
+  if (!client.connect(weatherHost, 80)) {
+    Serial.println("❌ OpenWeather connect failed");
+    return;
+  }
 
   String url = "/data/2.5/weather?q=" + String(city) +
                "&appid=" + weatherApiKey;
-
   client.print(
     "GET " + url + " HTTP/1.1\r\n"
     "Host: " + String(weatherHost) + "\r\n"
@@ -115,26 +119,30 @@ void checkRain() {
       }
     }
   }
+  client.stop();
+  Serial.print("🌧️ Дождь: "); Serial.println(isRaining ? "да" : "нет");
 }
 
 /* ================= SEND TO RAILWAY ================= */
 void sendToRailway() {
   WiFiClientSecure client;
   client.setInsecure();
-
   Serial.println("Connecting to Railway (HTTPS)...");
   if (!client.connect(serverHost, 443)) {
     Serial.println("❌ HTTPS connection FAILED");
     return;
   }
+  Serial.println("✅ Connected");
 
   String json = "{";
   json += "\"temperature\":" + String(temperature) + ",";
-  json += "\"pressure\":"    + String(pressure)    + ",";
-  json += "\"humidity\":"    + String(humidity)    + ",";
-  json += "\"light\":"       + String(light)       + ",";
-  json += "\"isRaining\":"   + String(isRaining ? "true" : "false");
+  json += "\"pressure\":" + String(pressure) + ",";
+  json += "\"humidity\":" + String(humidity) + ",";
+  json += "\"light\":" + String(light) + ",";
+  json += "\"isRaining\":" + String(isRaining ? "true" : "false");
   json += "}";
+
+  Serial.print("📤 Отправка JSON: "); Serial.println(json);
 
   client.print(
     "POST /data HTTP/1.1\r\n"
@@ -147,12 +155,12 @@ void sendToRailway() {
     json
   );
 
-  // 🔥 ОБЯЗАТЕЛЬНО ДОЧИТЫВАЕМ ОТВЕТ
+  // Читаем ответ
   unsigned long timeout = millis();
-  while (client.connected() && millis() - timeout < 3000) {
+  while (client.connected() && millis() - timeout < 5000) {
     while (client.available()) {
       String line = client.readStringUntil('\n');
-      Serial.println(line);
+      Serial.println("← Сервер: " + line);
     }
   }
 
