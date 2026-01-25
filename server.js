@@ -29,9 +29,13 @@ app.get("/", (req, res) => {
 });
 
 // ─────────────────────────────
-// Получение данных (для сайта)
+// Получение данных (для сайта) — без кэша!
 // ─────────────────────────────
 app.get("/data", (req, res) => {
+  // Отключаем кэш
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
   res.json(lastData);
 });
 
@@ -40,7 +44,6 @@ app.get("/data", (req, res) => {
 // ─────────────────────────────
 app.post("/data", (req, res) => {
   const body = req.body;
-
   if (!body || Object.keys(body).length === 0) {
     return res.status(400).json({ status: "error", message: "Empty body" });
   }
@@ -55,7 +58,6 @@ app.post("/data", (req, res) => {
   };
 
   console.log("📡 DATA RECEIVED:", lastData);
-
   res.json({ status: "ok" });
 });
 
