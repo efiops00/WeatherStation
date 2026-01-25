@@ -120,7 +120,7 @@ void checkRain() {
 /* ================= SEND TO RAILWAY ================= */
 void sendToRailway() {
   WiFiClientSecure client;
-  client.setInsecure(); // важно для ESP8266
+  client.setInsecure();
 
   Serial.println("Connecting to Railway (HTTPS)...");
   if (!client.connect(serverHost, 443)) {
@@ -147,6 +147,15 @@ void sendToRailway() {
     json
   );
 
-  Serial.println("📡 Sent to Railway:");
-  Serial.println(json);
+  // 🔥 ОБЯЗАТЕЛЬНО ДОЧИТЫВАЕМ ОТВЕТ
+  unsigned long timeout = millis();
+  while (client.connected() && millis() - timeout < 3000) {
+    while (client.available()) {
+      String line = client.readStringUntil('\n');
+      Serial.println(line);
+    }
+  }
+
+  client.stop();
+  Serial.println("✅ POST completed");
 }
