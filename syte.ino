@@ -17,7 +17,7 @@ const char* serverHost = "weatherstation-production-55a8.up.railway.app";
 
 /* ========== OPENWEATHER (дождь) ========== */
 const char* weatherHost = "api.openweathermap.org";
-const char* weatherApiKey = "09210c060db0e2e0df2c990eb75f3210";  // Получите на openweathermap.org
+const char* weatherApiKey = "...";  // Получите на openweathermap.org
 const char* city = "Moscow";
 
 /* ========== SENSORS ========== */
