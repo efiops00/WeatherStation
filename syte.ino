@@ -17,7 +17,7 @@ const char* serverHost = "weatherstation-production-55a8.up.railway.app";
 
 /* ========== OPENWEATHER (дождь) ========== */
 const char* weatherHost = "api.openweathermap.org";
-const char* weatherApiKey = "...";  // Получите на openweathermap.org
+const char* weatherApiKey = "...";  // get на openweathermap.org
 const char* city = "Moscow";
 
 /* ========== SENSORS ========== */
@@ -27,7 +27,7 @@ BH1750 lightMeter;
 
 /* ========== TIMING ========== */
 unsigned long lastUpdate = 0;
-const unsigned long UPDATE_INTERVAL = 10000; // 3 минуты
+const unsigned long UPDATE_INTERVAL = 10000; // 10 seconds
 
 /* ========== DATA ========== */
 float temperature = 0;
@@ -74,7 +74,7 @@ void loop() {
     sendToRailway();
     Serial.println("--- Цикл обновления завершен ---");
   }
-  delay(1000);  // Небольшая пауза
+  delay(1000);
 }
 
 /* ================= SENSORS ================= */
@@ -82,7 +82,7 @@ void updateSensors() {
   auto t = bme.readTemperature(BME_ADDR);
   if (t.isValid) temperature = t.data;
   auto p = bme.readPressure(BME_ADDR);
-  if (p.isValid) pressure = p.data * 0.750061683; // Pa → мм рт. ст.
+  if (p.isValid) pressure = p.data * 0.750061683;
   auto h = bme.readHumidity(BME_ADDR);
   if (h.isValid) humidity = h.data;
   light = lightMeter.readLightLevel();
