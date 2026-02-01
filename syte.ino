@@ -9,15 +9,15 @@ ESP8266 + BME280 + BH1750
 #include <BH1750.h>
 
 /* ========== WIFI ========== */
-const char* ssid = "ser2.4";
-const char* password = "1807270100";
+const char* ssid = "S23+";
+const char* password = "987654321";
 
 /* ========== RAILWAY ========== */
-const char* serverHost = "weatherstation-production-17fz.up.railway.app";
+const char* serverHost = "weatherstation-production-55a8.up.railway.app";
 
 /* ========== OPENWEATHER (дождь) ========== */
 const char* weatherHost = "api.openweathermap.org";
-const char* weatherApiKey = "ВАШ_РЕАЛЬНЫЙ_API_KEY_ЗДЕСЬ";  // Получите на openweathermap.org
+const char* weatherApiKey = "09210c060db0e2e0df2c990eb75f3210";  // Получите на openweathermap.org
 const char* city = "Moscow";
 
 /* ========== SENSORS ========== */
