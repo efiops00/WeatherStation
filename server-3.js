@@ -75,7 +75,5 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server on ${PORT}`);
 });
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server ready on 0.0.0.0:${PORT}`);
-});
+
 
