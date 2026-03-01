@@ -1,10 +1,28 @@
 const express = require("express");
-const fs = require("fs");  // Для персистента
+const fs = require("fs"); 
 const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 const DATA_FILE = path.join(__dirname, "data.json");
+
+// ─────────────────────────────
+// Middleware
+// ─────────────────────────────
+app.use(express.json());
+
+// Добавляем CORS заголовки вручную, чтобы Railway Edge не блокировал POST
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE");
+  res.header("Access-Control-Allow-Headers", "X-Requested-With,content-type");
+  
+  // Ответ на preflight-запросы
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 // ─────────────────────────────
 // Функция чтения/записи данных
@@ -30,35 +48,23 @@ function writeData(data) {
 }
 
 // ─────────────────────────────
-// Middleware
-// ─────────────────────────────
-app.use(express.json());
-
-// ─────────────────────────────
-// Главная страница
+// Маршруты
 // ─────────────────────────────
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// ─────────────────────────────
-// Получение данных (читаем из файла)
-// ─────────────────────────────
 app.get("/data", (req, res) => {
   const data = readData();
-  console.log("📡 GET data served:", data);  // Лог для Railway
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
-  res.setHeader("Pragma", "no-cache");
-  res.setHeader("Expires", "0");
   res.json(data);
 });
 
-// ─────────────────────────────
-// Приём данных от ESP (обновляем файл)
-// ─────────────────────────────
+// Главный обработчик POST от Arduino
 app.post("/data", (req, res) => {
   const body = req.body;
-  console.log("📥 Raw POST body:", body);  // Debug raw
+  console.log("📥 Raw POST body received:", body); 
+  
   if (!body || Object.keys(body).length === 0) {
     console.log("❌ Empty POST body");
     return res.status(400).json({ status: "error", message: "Empty body" });
@@ -69,28 +75,20 @@ app.post("/data", (req, res) => {
     pressure: Number(body.pressure) || 0,
     humidity: Number(body.humidity) || 0,
     light: Number(body.light) || 0,
-    isRaining: Boolean(body.isRaining),
+    isRaining: body.isRaining === true || body.isRaining === "true",
     updatedAt: new Date().toISOString(),
   };
 
   console.log("📡 DATA RECEIVED & UPDATED:", newData);
   writeData(newData);
-  res.json({ status: "ok" });
-});
-
-// ─────────────────────────────
-// Тест: сброс данных
-// ─────────────────────────────
-app.post("/reset", (req, res) => {
-  writeData({ temperature: 0, pressure: 0, humidity: 0, light: 0, isRaining: false, updatedAt: null });
-  console.log("🔄 Data reset");
-  res.json({ status: "reset ok" });
+  res.status(200).json({ status: "ok" }); // Явно указываем 200 OK
 });
 
 // ─────────────────────────────
 // Запуск
 // ─────────────────────────────
-app.listen(PORT, () => {
+// ВАЖНО: '0.0.0.0' обязателен для Railway, иначе контейнер не будет доступен извне!
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server on port ${PORT}`);
   console.log("📂 Data file:", DATA_FILE);
 });
