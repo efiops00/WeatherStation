@@ -1,17 +1,20 @@
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const url = require('url');
+const express = require("express");
+const fs = require("fs");  // Для персистента
+const path = require("path");
 
+const app = express();
 const PORT = process.env.PORT || 8080;
-const DATA_FILE = path.join(__dirname, 'data.json');
+const DATA_FILE = path.join(__dirname, "data.json");
 
+// ─────────────────────────────
+// Функция чтения/записи данных
+// ─────────────────────────────
 function readData() {
   if (fs.existsSync(DATA_FILE)) {
     try {
-      return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+      return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
     } catch (e) {
-      console.error('Read error:', e);
+      console.error("❌ Read data error:", e);
     }
   }
   return { temperature: 0, pressure: 0, humidity: 0, light: 0, isRaining: false, updatedAt: null };
@@ -20,60 +23,74 @@ function readData() {
 function writeData(data) {
   try {
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-    console.log('Data saved');
+    console.log("💾 Data saved to file");
   } catch (e) {
-    console.error('Write error:', e);
+    console.error("❌ Write data error:", e);
   }
 }
 
-const server = http.createServer((req, res) => {
-  const parsedUrl = url.parse(req.url, true);
-  res.setHeader('Access-Control-Allow-Origin', '*'); // Для фронта
+// ─────────────────────────────
+// Middleware
+// ─────────────────────────────
+app.use(express.json());
 
-  if (req.method === 'OPTIONS') {
-    res.writeHead(200);
-    res.end();
-    return;
-  }
-
-  if (req.url === '/' && req.method === 'GET') {
-    fs.readFile(path.join(__dirname, 'index.html'), (err, data) => {
-      if (err) {
-        res.writeHead(404);
-        res.end('Not found');
-      } else {
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(data);
-      }
-    });
-  } else if (req.url === '/data' && req.method === 'GET') {
-    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
-    res.end(JSON.stringify(readData()));
-  } else if (req.url === '/data' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', () => {
-      const data = JSON.parse(body || '{}');
-      const newData = {
-        temperature: Number(data.temperature) || 0,
-        pressure: Number(data.pressure) || 0,
-        humidity: Number(data.humidity) || 0,
-        light: Number(data.light) || 0,
-        isRaining: Boolean(data.isRaining),
-        updatedAt: new Date().toISOString()
-      };
-      writeData(newData);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ok' }));
-    });
-  } else {
-    res.writeHead(404);
-    res.end('Not found');
-  }
+// ─────────────────────────────
+// Главная страница
+// ─────────────────────────────
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server on ${PORT}`);
+// ─────────────────────────────
+// Получение данных (читаем из файла)
+// ─────────────────────────────
+app.get("/data", (req, res) => {
+  const data = readData();
+  console.log("📡 GET data served:", data);  // Лог для Railway
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  res.json(data);
 });
 
+// ─────────────────────────────
+// Приём данных от ESP (обновляем файл)
+// ─────────────────────────────
+app.post("/data", (req, res) => {
+  const body = req.body;
+  console.log("📥 Raw POST body:", body);  // Debug raw
+  if (!body || Object.keys(body).length === 0) {
+    console.log("❌ Empty POST body");
+    return res.status(400).json({ status: "error", message: "Empty body" });
+  }
 
+  const newData = {
+    temperature: Number(body.temperature) || 0,
+    pressure: Number(body.pressure) || 0,
+    humidity: Number(body.humidity) || 0,
+    light: Number(body.light) || 0,
+    isRaining: Boolean(body.isRaining),
+    updatedAt: new Date().toISOString(),
+  };
+
+  console.log("📡 DATA RECEIVED & UPDATED:", newData);
+  writeData(newData);
+  res.json({ status: "ok" });
+});
+
+// ─────────────────────────────
+// Тест: сброс данных
+// ─────────────────────────────
+app.post("/reset", (req, res) => {
+  writeData({ temperature: 0, pressure: 0, humidity: 0, light: 0, isRaining: false, updatedAt: null });
+  console.log("🔄 Data reset");
+  res.json({ status: "reset ok" });
+});
+
+// ─────────────────────────────
+// Запуск
+// ─────────────────────────────
+app.listen(PORT, () => {
+  console.log(`🚀 Server on port ${PORT}`);
+  console.log("📂 Data file:", DATA_FILE);
+});
