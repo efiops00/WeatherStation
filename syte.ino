@@ -9,8 +9,8 @@ ESP8266 + BME280 + BH1750
 #include <BH1750.h>
 
 /* ========== WIFI ========== */
-const char* ssid = "Название сети";
-const char* password = "Пароль сети";
+const char* ssid = "ser2.4";
+const char* password = "1807270100";
 
 /* ========== RAILWAY ========== */
 const char* serverHost = "weatherstation-production-852e.up.railway.app";
