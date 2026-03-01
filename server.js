@@ -1,10 +1,23 @@
 const express = require("express");
-const fs = require("fs");  // Для персистента
+const fs = require("fs"); // Для персистента
 const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 const DATA_FILE = path.join(__dirname, "data.json");
+
+// ─────────────────────────────
+// CORS для GitHub Pages
+// ─────────────────────────────
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 // ─────────────────────────────
 // Функция чтения/записи данных
@@ -17,7 +30,14 @@ function readData() {
       console.error("❌ Read data error:", e);
     }
   }
-  return { temperature: 0, pressure: 0, humidity: 0, light: 0, isRaining: false, updatedAt: null };
+  return {
+    temperature: 0,
+    pressure: 0,
+    humidity: 0,
+    light: 0,
+    isRaining: false,
+    updatedAt: null
+  };
 }
 
 function writeData(data) {
@@ -35,7 +55,8 @@ function writeData(data) {
 app.use(express.json());
 
 // ─────────────────────────────
-// Главная страница
+// Главная страница (можно не использовать,
+// если фронтенд на GitHub Pages)
 // ─────────────────────────────
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
@@ -46,7 +67,7 @@ app.get("/", (req, res) => {
 // ─────────────────────────────
 app.get("/data", (req, res) => {
   const data = readData();
-  console.log("📡 GET data served:", data);  // Лог для Railway
+  console.log("📡 GET data served:", data); // Лог для Railway
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
@@ -58,7 +79,7 @@ app.get("/data", (req, res) => {
 // ─────────────────────────────
 app.post("/data", (req, res) => {
   const body = req.body;
-  console.log("📥 Raw POST body:", body);  // Debug raw
+  console.log("📥 Raw POST body:", body); // Debug raw
   if (!body || Object.keys(body).length === 0) {
     console.log("❌ Empty POST body");
     return res.status(400).json({ status: "error", message: "Empty body" });
@@ -70,7 +91,7 @@ app.post("/data", (req, res) => {
     humidity: Number(body.humidity) || 0,
     light: Number(body.light) || 0,
     isRaining: Boolean(body.isRaining),
-    updatedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   };
 
   console.log("📡 DATA RECEIVED & UPDATED:", newData);
@@ -82,7 +103,14 @@ app.post("/data", (req, res) => {
 // Тест: сброс данных
 // ─────────────────────────────
 app.post("/reset", (req, res) => {
-  writeData({ temperature: 0, pressure: 0, humidity: 0, light: 0, isRaining: false, updatedAt: null });
+  writeData({
+    temperature: 0,
+    pressure: 0,
+    humidity: 0,
+    light: 0,
+    isRaining: false,
+    updatedAt: null
+  });
   console.log("🔄 Data reset");
   res.json({ status: "reset ok" });
 });
