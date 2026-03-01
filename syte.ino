@@ -13,7 +13,7 @@ const char* ssid = "ser2.4";
 const char* password = "1807270100";
 
 /* ========== RAILWAY ========== */
-const char* serverHost = "weatherstation-production-852e.up.railway.app";
+const char* serverHost = "https://weatherstation-production-852e.up.railway.app";
 
 /* ========== OPENWEATHER (дождь) ========== */
 const char* weatherHost = "api.openweathermap.org";
