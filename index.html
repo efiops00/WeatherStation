@@ -1,68 +1,267 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>📡 Weather Station</title>
+  <meta charset="UTF-8" />
+  <title>Погодная станция</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; background: #f0f8ff; }
-    h1 { text-align: center; color: #333; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-    th { background: #4CAF50; color: white; }
-    .rain { color: red; font-weight: bold; }
-    .updated { text-align: center; font-size: 0.9em; color: #666; }
-    .loading { text-align: center; color: #999; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      min-height: 100vh;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      background: #020617;
+      border-radius: 16px;
+      padding: 24px 20px;
+      box-shadow: 0 24px 60px rgba(15,23,42,0.8);
+      max-width: 420px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    h1 {
+      margin: 0 0 4px;
+      font-size: 1.4rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .subtitle {
+      margin: 0 0 16px;
+      font-size: 0.9rem;
+      color: #9ca3af;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(34,197,94,0.12);
+      color: #bbf7d0;
+      margin-bottom: 12px;
+    }
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 12px rgba(34,197,94,0.7);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 8px 4px;
+      text-align: left;
+    }
+    th {
+      color: #9ca3af;
+      font-weight: 500;
+      border-bottom: 1px solid rgba(148,163,184,0.35);
+    }
+    tr + tr td {
+      border-top: 1px solid rgba(15,23,42,0.9);
+    }
+    .label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .label-emoji {
+      font-size: 1.1rem;
+      width: 1.3rem;
+      text-align: center;
+    }
+    .value {
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+    }
+    .muted {
+      color: #6b7280;
+    }
+    .status-row {
+      font-size: 0.85rem;
+      color: #9ca3af;
+      margin-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .status-pill {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(15,23,42,0.9);
+    }
+    .updated {
+      text-align: right;
+      flex: 1;
+      min-width: 160px;
+    }
+    .rain-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      margin-right: 4px;
+      display: inline-block;
+    }
+    .rain-yes {
+      background: #38bdf8;
+      box-shadow: 0 0 10px rgba(56,189,248,0.7);
+    }
+    .rain-no {
+      background: #4b5563;
+    }
+    .error {
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: #fca5a5;
+    }
   </style>
 </head>
 <body>
-  <h1>📡 Погодная станция</h1>
-  <div id="loading" class="loading">Загрузка...</div>
-  <table id="dataTable" style="display: none;">
-    <thead>
-      <tr>
-        <th>Параметр</th>
-        <th>Значение</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td>🌡️ Температура</td><td id="temperature">-- °C</td></tr>
-      <tr><td>📉 Давление</td><td id="pressure">-- мм рт. ст.</td></tr>
-      <tr><td>💧 Влажность</td><td id="humidity">-- %</td></tr>
-      <tr><td>☀️ Свет</td><td id="light">-- lx</td></tr>
-      <tr><td>🌧️ Осадки</td><td id="isRaining">--</td></tr>
-    </tbody>
-  </table>
-  <div id="updated" class="updated"></div>
+  <div class="card">
+    <div class="badge">
+      <span class="badge-dot"></span>
+      <span id="status-text">Подключение к станции…</span>
+    </div>
+
+    <h1>📡 Погодная станция</h1>
+    <p class="subtitle" id="subtitle">Загрузка данных…</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Параметр</th>
+          <th>Значение</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="label">
+            <span class="label-emoji">🌡️</span>
+            <span>Температура</span>
+          </td>
+          <td class="value" id="temperature">-- °C</td>
+        </tr>
+        <tr>
+          <td class="label">
+            <span class="label-emoji">📉</span>
+            <span>Давление</span>
+          </td>
+          <td class="value" id="pressure">-- мм рт. ст.</td>
+        </tr>
+        <tr>
+          <td class="label">
+            <span class="label-emoji">💧</span>
+            <span>Влажность</span>
+          </td>
+          <td class="value" id="humidity">-- %</td>
+        </tr>
+        <tr>
+          <td class="label">
+            <span class="label-emoji">☀️</span>
+            <span>Свет</span>
+          </td>
+          <td class="value" id="light">-- lx</td>
+        </tr>
+        <tr>
+          <td class="label">
+            <span class="label-emoji">🌧️</span>
+            <span>Осадки</span>
+          </td>
+          <td class="value" id="rain">
+            <span class="rain-dot rain-no" id="rain-dot"></span>
+            <span id="rain-text">--</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="status-row">
+      <div class="status-pill" id="polling-status">Обновление каждые 5 секунд</div>
+      <div class="updated" id="updated-at">Обновлено: —</div>
+    </div>
+
+    <div class="error" id="error"></div>
+  </div>
 
   <script>
-    async function updateData() {
+    // URL твоего бэкенда на Railway / другом сервере:
+    const API_BASE = "server-3.js"; // без / в конце
+
+    const els = {
+      temperature: document.getElementById("temperature"),
+      pressure: document.getElementById("pressure"),
+      humidity: document.getElementById("humidity"),
+      light: document.getElementById("light"),
+      rainText: document.getElementById("rain-text"),
+      rainDot: document.getElementById("rain-dot"),
+      updatedAt: document.getElementById("updated-at"),
+      subtitle: document.getElementById("subtitle"),
+      statusText: document.getElementById("status-text"),
+      error: document.getElementById("error")
+    };
+
+    function formatDateTime(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return "—";
+      return d.toLocaleString("ru-RU", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      });
+    }
+
+    async function fetchData() {
       try {
-        const response = await fetch('/data', {
-          cache: 'no-store',  // Нет кэша
-          headers: { 'Cache-Control': 'no-cache' }
-        });
-        const data = await response.json();
-        
-        document.getElementById('temperature').textContent = data.temperature.toFixed(1);
-        document.getElementById('pressure').textContent = data.pressure.toFixed(1);
-        document.getElementById('humidity').textContent = data.humidity.toFixed(1);
-        document.getElementById('light').textContent = data.light.toFixed(1);
-        document.getElementById('isRaining').innerHTML = data.isRaining ? '<span class="rain">Да</span>' : 'Нет';
-        document.getElementById('updated').textContent = 'Обновлено: ' + new Date(data.updatedAt).toLocaleString('ru');
-        
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('dataTable').style.display = 'table';
-      } catch (error) {
-        console.error('Ошибка:', error);
-        document.getElementById('loading').textContent = 'Ошибка загрузки данных';
+        els.error.textContent = "";
+        const res = await fetch(API_BASE + "/data", { cache: "no-store" });
+
+        if (!res.ok) {
+          throw new Error("HTTP " + res.status);
+        }
+
+        const data = await res.json();
+
+        els.temperature.textContent = (data.temperature ?? "--") + " °C";
+        els.pressure.textContent = (data.pressure ?? "--") + " мм рт. ст.";
+        els.humidity.textContent = (data.humidity ?? "--") + " %";
+        els.light.textContent = (data.light ?? "--") + " lx";
+
+        const raining = !!data.isRaining;
+        els.rainText.textContent = raining ? "идут" : "нет";
+        els.rainDot.classList.toggle("rain-yes", raining);
+        els.rainDot.classList.toggle("rain-no", !raining);
+
+        els.updatedAt.textContent = "Обновлено: " + formatDateTime(data.updatedAt);
+
+        els.subtitle.textContent = "Данные с вашей домашней метеостанции";
+        els.statusText.textContent = "Станция онлайн";
+      } catch (err) {
+        console.error(err);
+        els.error.textContent = "Не удалось получить данные: " + err.message;
+        els.statusText.textContent = "Ошибка связи со станцией";
       }
     }
 
-    // Загрузка при старте и каждые 5 сек
-    updateData();
-    setInterval(updateData, 5000);
+    fetchData();
+    setInterval(fetchData, 5000);
   </script>
 </body>
 </html>
-
