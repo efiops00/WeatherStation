@@ -13,7 +13,7 @@ const char* ssid = "Название сети";
 const char* password = "Пароль сети";
 
 /* ========== RAILWAY ========== */
-const char* serverHost = "weatherstation-production-bb2a.up.railway.app";
+const char* serverHost = "weatherstation-production-852e.up.railway.app";
 
 /* ========== OPENWEATHER (дождь) ========== */
 const char* weatherHost = "api.openweathermap.org";
